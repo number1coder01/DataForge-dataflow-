@@ -9,7 +9,7 @@ from database import create_dataset, get_datasets_by_user, get_dataset, delete_d
 
 router = APIRouter(prefix="/api/datasets", tags=["datasets"])
 
-S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "dataflow-platform-987654321") # TODO replace with actual bucket
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "dataflow-platform-kaart")
 AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
 s3_client = boto3.client('s3', region_name=AWS_REGION)
 
@@ -103,3 +103,33 @@ def delete_dataset(dataset_id: str, user: dict = Depends(get_current_user)):
     # We would delete bronze, silver, metadata
     
     return None
+
+import json
+
+def _get_metadata_from_s3(dataset_id: str, file_type: str, user_id: str):
+    dataset = get_dataset(dataset_id)
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    if dataset["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+        
+    key = f"silver/datasets/{dataset_id}/{file_type}.json"
+    try:
+        response = s3_client.get_object(Bucket=S3_BUCKET_NAME, Key=key)
+        return json.loads(response['Body'].read().decode('utf-8'))
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'NoSuchKey':
+            raise HTTPException(status_code=404, detail=f"{file_type} not found")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/{dataset_id}/schema")
+def get_dataset_schema(dataset_id: str, user: dict = Depends(get_current_user)):
+    return _get_metadata_from_s3(dataset_id, "schema", user["user_id"])
+
+@router.get("/{dataset_id}/profile")
+def get_dataset_profile(dataset_id: str, user: dict = Depends(get_current_user)):
+    return _get_metadata_from_s3(dataset_id, "profile", user["user_id"])
+
+@router.get("/{dataset_id}/quality")
+def get_dataset_quality(dataset_id: str, user: dict = Depends(get_current_user)):
+    return _get_metadata_from_s3(dataset_id, "quality", user["user_id"])
