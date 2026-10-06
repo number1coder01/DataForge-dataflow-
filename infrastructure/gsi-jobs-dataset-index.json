@@ -1,0 +1,12 @@
+[
+  {
+    "Create": {
+      "IndexName": "dataset_id-index",
+      "KeySchema": [
+        { "AttributeName": "dataset_id", "KeyType": "HASH" },
+        { "AttributeName": "created_at", "KeyType": "RANGE" }
+      ],
+      "Projection": { "ProjectionType": "ALL" }
+    }
+  }
+]

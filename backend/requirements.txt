@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+mangum
+pydantic
+email-validator
+boto3
+pandas
+pyarrow
+pyjwt
+bcrypt
+passlib
+python-dotenv

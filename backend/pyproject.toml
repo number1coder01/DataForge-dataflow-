@@ -1,0 +1,14 @@
+[project]
+name = "dataflow-backend"
+version = "0.1.0"
+description = "FastAPI backend for DataFlow platform"
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn>=0.30.0",
+    "mangum>=0.17.0",
+    "pydantic>=2.7.0",
+    "boto3>=1.34.0",
+    "pyjwt>=2.8.0",
+    "bcrypt>=4.1.0",
+    "python-dotenv>=1.0.0"
+]
