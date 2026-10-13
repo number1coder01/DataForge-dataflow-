@@ -1,10 +1,50 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+dist/
+venv/
+.venv/
+
+# Environment and Secrets
 .env
-__pycache__
-*.pyc
-venv
-.venv
-.idea
-.vscode
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# Deployment & Temporary Archives
+*.zip
+*.tar.gz
+response.json
+current_lambda/
+current_lambda_code/
+
+# Dataset files & extraction folders
+*.csv
+*.tsv
+seoul+bike+sharing+demand/
+
+# IDE & OS
+.idea/
+.vscode/
 .DS_Store
+Thumbs.db
+
+# Local test placeholder
+index.html
+
+# Local reports and planning notes
+report.md
+visual_report.html
+everything.md
+newidea.md
+new_implementation_plan
+implementationplan.md
+dataflow_implementation_plan_v2.md
+updates.md
+security_audit_phase9.md
+phase_4_and_5_report.md
+phase_6_report.md

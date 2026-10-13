@@ -115,3 +115,60 @@ def delete_dataset_record(dataset_id: str):
     except ClientError as e:
         print(f"Error deleting dataset: {e}")
         return False
+
+JOBS_TABLE_NAME = os.getenv('JOBS_TABLE_NAME', 'dataflow-jobs')
+try:
+    jobs_table = dynamodb.Table(JOBS_TABLE_NAME)
+except Exception:
+    jobs_table = None
+
+def get_job(job_id: str):
+    try:
+        response = jobs_table.get_item(Key={'job_id': job_id})
+        return response.get('Item')
+    except ClientError as e:
+        print(f"Error getting job: {e}")
+        return None
+
+def get_jobs_by_dataset(dataset_id: str):
+    try:
+        # Assuming GSI dataset_id-index exists on dataflow-jobs
+        response = jobs_table.query(
+            IndexName='dataset_id-index',
+            KeyConditionExpression=boto3.dynamodb.conditions.Key('dataset_id').eq(dataset_id)
+        )
+        return response.get('Items', [])
+    except ClientError as e:
+        print(f"Query jobs by dataset failed, trying scan fallback: {e}")
+        try:
+            response = jobs_table.scan(
+                FilterExpression=boto3.dynamodb.conditions.Attr('dataset_id').eq(dataset_id)
+            )
+            return response.get('Items', [])
+        except Exception as scan_err:
+            print(f"Scan fallback failed: {scan_err}")
+            return []
+    except Exception as e:
+        print(f"Error getting jobs by dataset: {e}")
+        return []
+
+def get_jobs_by_user(user_id: str):
+    try:
+        response = jobs_table.query(
+            IndexName='user_id-index',
+            KeyConditionExpression=boto3.dynamodb.conditions.Key('user_id').eq(user_id)
+        )
+        return response.get('Items', [])
+    except ClientError as e:
+        print(f"Query jobs by user failed, trying scan fallback: {e}")
+        try:
+            response = jobs_table.scan(
+                FilterExpression=boto3.dynamodb.conditions.Attr('user_id').eq(user_id)
+            )
+            return response.get('Items', [])
+        except Exception as scan_err:
+            print(f"Scan fallback failed: {scan_err}")
+            return []
+    except Exception as e:
+        print(f"Error getting jobs by user: {e}")
+        return []

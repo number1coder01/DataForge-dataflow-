@@ -13,7 +13,8 @@ def lambda_handler(event, context):
     if 'Records' not in event:
         # Check if it's a direct invocation
         if 'bucket' in event and 'key' in event and 'dataset_id' in event:
-            run_etl_pipeline(event['bucket'], event['key'], event['dataset_id'])
+            user_id = event.get('user_id', 'unknown')
+            run_etl_pipeline(event['bucket'], event['key'], event['dataset_id'], user_id)
             return {'statusCode': 200, 'body': 'ETL pipeline completed successfully.'}
         return {'statusCode': 400, 'body': 'Invalid event format.'}
         

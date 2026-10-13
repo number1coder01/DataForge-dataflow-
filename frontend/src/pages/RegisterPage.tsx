@@ -71,7 +71,11 @@ export const RegisterPage: React.FC = () => {
               className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:border-blue-500"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="e.g. DataFlow123!"
             />
+            <p className="text-xs text-gray-400 mt-1">
+              Must be &ge;8 chars with uppercase, lowercase, digit, and special symbol (!@#$%^&*)
+            </p>
           </div>
           <button
             type="submit"
