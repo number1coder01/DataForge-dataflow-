@@ -10,7 +10,14 @@ import { PipelineRunsPage } from './pages/PipelineRunsPage';
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-blue-600/30 selection:text-white">
+    <div
+      className="min-h-screen flex flex-col"
+      style={{
+        backgroundColor: 'var(--color-bg-primary)',
+        color: 'var(--color-text-primary)',
+        fontFamily: 'var(--font-sans)',
+      }}
+    >
       <Navbar />
       <main className="flex-1">
         {children}

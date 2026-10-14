@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import type { Job, JobStatus } from '../lib/types';
 import { usePolling } from '../hooks/usePolling';
 import { PipelineTimeline } from '../components/pipeline/PipelineTimeline';
+import { TableSkeleton, CardGridSkeleton } from '../components/layout/SkeletonLoader';
 import {
   Activity,
   CheckCircle2,
@@ -67,60 +68,72 @@ export const PipelineRunsPage: React.FC = () => {
   };
 
   const getStatusBadge = (status: JobStatus) => {
-    switch (status) {
-      case 'SUCCESS':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            SUCCESS
-          </span>
-        );
-      case 'RUNNING':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 animate-pulse">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            RUNNING
-          </span>
-        );
-      case 'FAILED':
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">
-            <AlertCircle className="w-3.5 h-3.5" />
-            FAILED
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-800 text-slate-400 border border-slate-700">
-            <Clock className="w-3.5 h-3.5" />
-            PENDING
-          </span>
-        );
-    }
+    const styles: Record<string, { bg: string; color: string; border: string }> = {
+      SUCCESS: { bg: 'var(--color-success-bg)', color: 'var(--color-success)', border: 'var(--color-success-border)' },
+      RUNNING: { bg: 'var(--color-info-bg)', color: 'var(--color-info)', border: 'var(--color-info-border)' },
+      FAILED: { bg: 'var(--color-error-bg)', color: 'var(--color-error)', border: 'var(--color-error-border)' },
+      PENDING: { bg: 'var(--color-bg-elevated)', color: 'var(--color-text-secondary)', border: 'var(--color-border)' },
+    };
+    const s = styles[status] || styles.PENDING;
+    const icons: Record<string, React.ReactNode> = {
+      SUCCESS: <CheckCircle2 className="w-3.5 h-3.5" />,
+      RUNNING: <Loader2 className="w-3.5 h-3.5 animate-spin" />,
+      FAILED: <AlertCircle className="w-3.5 h-3.5" />,
+      PENDING: <Clock className="w-3.5 h-3.5" />,
+    };
+
+    return (
+      <span
+        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${status === 'RUNNING' ? 'animate-pulse' : ''}`}
+        style={{ backgroundColor: s.bg, color: s.color, border: `1px solid ${s.border}` }}
+      >
+        {icons[status]}
+        {status}
+      </span>
+    );
   };
 
+  const filterButtons: { key: string; label: string; count: number; activeColor: string }[] = [
+    { key: 'all', label: 'All', count: stats.total, activeColor: 'var(--color-text-primary)' },
+    { key: 'RUNNING', label: 'Running', count: stats.running, activeColor: 'var(--color-info)' },
+    { key: 'SUCCESS', label: 'Success', count: stats.success, activeColor: 'var(--color-success)' },
+    { key: 'FAILED', label: 'Failed', count: stats.failed, activeColor: 'var(--color-error)' },
+  ];
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fade-in">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white">Pipeline Executions</h1>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--color-text-primary)' }}>Pipeline Executions</h1>
             {isPolling && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-cyan-950/40 text-cyan-400 border border-cyan-800/40 animate-pulse">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono animate-pulse"
+                style={{
+                  backgroundColor: 'var(--color-info-bg)',
+                  color: 'var(--color-info)',
+                  border: '1px solid var(--color-info-border)',
+                }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full animate-ping" style={{ backgroundColor: 'var(--color-info)' }} />
                 Live Polling
               </span>
             )}
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
             Monitor and inspect execution history for all ETL pipeline jobs.
           </p>
         </div>
 
         <button
           onClick={() => refetch()}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors self-start sm:self-auto"
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition-colors self-start sm:self-auto"
+          style={{
+            backgroundColor: 'var(--color-bg-elevated)',
+            borderColor: 'var(--color-border)',
+            color: 'var(--color-text-primary)',
+          }}
         >
           <RefreshCw className="w-3.5 h-3.5" />
           Refresh Runs
@@ -128,97 +141,97 @@ export const PipelineRunsPage: React.FC = () => {
       </div>
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-slate-900/60 border border-slate-800 p-4 rounded-xl">
-          <span className="text-xs text-slate-400 block">Total Pipeline Runs</span>
-          <span className="text-xl font-bold font-mono text-white mt-1 block">{stats.total}</span>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
+        <div className="p-4 rounded-xl border" style={{ backgroundColor: 'var(--color-bg-card)', borderColor: 'var(--color-border)' }}>
+          <span className="text-xs block" style={{ color: 'var(--color-text-secondary)' }}>Total Pipeline Runs</span>
+          <span className="text-xl font-bold mt-1 block" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-primary)' }}>{stats.total}</span>
         </div>
-
-        <div className="bg-slate-900/60 border border-slate-800 p-4 rounded-xl">
-          <span className="text-xs text-slate-400 block">Active Running</span>
-          <span className="text-xl font-bold font-mono text-blue-400 mt-1 block">{stats.running}</span>
+        <div className="p-4 rounded-xl border" style={{ backgroundColor: 'var(--color-bg-card)', borderColor: 'var(--color-border)' }}>
+          <span className="text-xs block" style={{ color: 'var(--color-text-secondary)' }}>Active Running</span>
+          <span className="text-xl font-bold mt-1 block" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-info)' }}>{stats.running}</span>
         </div>
-
-        <div className="bg-slate-900/60 border border-slate-800 p-4 rounded-xl">
-          <span className="text-xs text-slate-400 block">Successful Runs</span>
-          <span className="text-xl font-bold font-mono text-emerald-400 mt-1 block">{stats.success}</span>
+        <div className="p-4 rounded-xl border" style={{ backgroundColor: 'var(--color-bg-card)', borderColor: 'var(--color-border)' }}>
+          <span className="text-xs block" style={{ color: 'var(--color-text-secondary)' }}>Successful Runs</span>
+          <span className="text-xl font-bold mt-1 block" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-success)' }}>{stats.success}</span>
         </div>
-
-        <div className="bg-slate-900/60 border border-slate-800 p-4 rounded-xl">
-          <span className="text-xs text-slate-400 block">Failed Executions</span>
-          <span className="text-xl font-bold font-mono text-rose-400 mt-1 block">{stats.failed}</span>
+        <div className="p-4 rounded-xl border" style={{ backgroundColor: 'var(--color-bg-card)', borderColor: 'var(--color-border)' }}>
+          <span className="text-xs block" style={{ color: 'var(--color-text-secondary)' }}>Failed Executions</span>
+          <span className="text-xl font-bold mt-1 block" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-error)' }}>{stats.failed}</span>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} />
           <input
             type="text"
             placeholder="Search by Dataset Name or Job ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-900/80 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+            className="w-full rounded-xl pl-9 pr-3 py-2 text-xs outline-none transition-all"
+            style={{
+              backgroundColor: 'var(--color-bg-input)',
+              border: '1px solid var(--color-border)',
+              color: 'var(--color-text-primary)',
+            }}
+            onFocus={(e) => e.target.style.borderColor = 'var(--color-border-focus)'}
+            onBlur={(e) => e.target.style.borderColor = 'var(--color-border)'}
           />
         </div>
 
-        <div className="flex items-center gap-1.5 bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-xs w-full sm:w-auto">
-          <button
-            onClick={() => setStatusFilter('all')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-              statusFilter === 'all' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            All ({stats.total})
-          </button>
-          <button
-            onClick={() => setStatusFilter('RUNNING')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-              statusFilter === 'RUNNING' ? 'bg-blue-600 text-white' : 'text-blue-400 hover:text-blue-300'
-            }`}
-          >
-            Running ({stats.running})
-          </button>
-          <button
-            onClick={() => setStatusFilter('SUCCESS')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-              statusFilter === 'SUCCESS' ? 'bg-emerald-600 text-white' : 'text-emerald-400 hover:text-emerald-300'
-            }`}
-          >
-            Success ({stats.success})
-          </button>
-          <button
-            onClick={() => setStatusFilter('FAILED')}
-            className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-              statusFilter === 'FAILED' ? 'bg-rose-600 text-white' : 'text-rose-400 hover:text-rose-300'
-            }`}
-          >
-            Failed ({stats.failed})
-          </button>
+        <div
+          className="flex items-center gap-1 p-1 rounded-xl border text-xs w-full sm:w-auto"
+          style={{ backgroundColor: 'var(--color-bg-input)', borderColor: 'var(--color-border)' }}
+        >
+          {filterButtons.map((btn) => (
+            <button
+              key={btn.key}
+              onClick={() => setStatusFilter(btn.key)}
+              className="px-3 py-1.5 rounded-lg font-medium transition-colors"
+              style={{
+                backgroundColor: statusFilter === btn.key ? 'var(--color-bg-elevated)' : 'transparent',
+                color: statusFilter === btn.key ? btn.activeColor : 'var(--color-text-tertiary)',
+              }}
+            >
+              {btn.label} ({btn.count})
+            </button>
+          ))}
         </div>
       </div>
 
       {/* Table or Empty State */}
       {loading && jobList.length === 0 ? (
-        <div className="p-16 text-center text-slate-400 bg-slate-900/40 rounded-2xl border border-slate-800">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-3" />
-          <p className="text-sm">Loading execution history...</p>
-        </div>
+        <TableSkeleton rows={4} cols={7} />
       ) : filteredJobs.length === 0 ? (
-        <div className="p-16 text-center bg-slate-900/40 rounded-2xl border border-slate-800 text-slate-400">
-          <Activity className="w-10 h-10 text-slate-500 mx-auto mb-3" />
-          <h4 className="text-base font-semibold text-slate-200">No pipeline executions found</h4>
-          <p className="text-xs text-slate-500 mt-1">
+        <div
+          className="p-16 text-center rounded-2xl border animate-fade-in-up"
+          style={{ backgroundColor: 'var(--color-bg-card)', borderColor: 'var(--color-border)' }}
+        >
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+            style={{ backgroundColor: 'var(--color-accent-glow)', border: '1px solid var(--color-border)' }}
+          >
+            <Activity className="w-7 h-7" style={{ color: 'var(--color-accent-primary)' }} />
+          </div>
+          <h4 className="text-base font-semibold" style={{ color: 'var(--color-text-primary)' }}>No pipeline executions found</h4>
+          <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>
             Upload a dataset to trigger your first automated ETL run.
           </p>
         </div>
       ) : (
-        <div className="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="rounded-2xl overflow-hidden shadow-xl glass-card">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-800/60 border-b border-slate-800 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                <tr
+                  className="border-b text-xs font-semibold uppercase tracking-wider"
+                  style={{
+                    backgroundColor: 'var(--color-bg-elevated)',
+                    borderColor: 'var(--color-border)',
+                    color: 'var(--color-text-tertiary)',
+                  }}
+                >
                   <th className="py-3.5 px-4">Job ID</th>
                   <th className="py-3.5 px-4">Dataset</th>
                   <th className="py-3.5 px-4">Status</th>
@@ -228,43 +241,55 @@ export const PipelineRunsPage: React.FC = () => {
                   <th className="py-3.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-xs">
-                {filteredJobs.map((job) => {
+              <tbody className="text-xs">
+                {filteredJobs.map((job, i) => {
                   const isExpanded = expandedJobId === job.job_id;
                   const stages = job.stages || {};
                   const successStages = Object.values(stages).filter((s) => s.status === 'SUCCESS').length;
 
                   return (
                     <React.Fragment key={job.job_id}>
-                      <tr className="hover:bg-slate-800/30 transition-colors">
-                        <td className="py-3.5 px-4 font-mono font-medium text-slate-300">
+                      <tr
+                        className="transition-colors animate-fade-in"
+                        style={{
+                          borderBottom: '1px solid var(--color-border-subtle)',
+                          animationDelay: `${i * 40}ms`,
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-bg-hover)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                      >
+                        <td className="py-3.5 px-4 font-medium" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)' }}>
                           #{job.job_id.slice(0, 8)}
                         </td>
                         <td className="py-3.5 px-4">
                           <Link
                             to={`/datasets/${job.dataset_id}`}
-                            className="font-medium text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1.5"
+                            className="font-medium flex items-center gap-1.5 hover:underline"
+                            style={{ color: 'var(--color-accent-primary)' }}
                           >
                             {job.dataset_name || 'Dataset'}
-                            <ExternalLink className="w-3 h-3 text-slate-500" />
+                            <ExternalLink className="w-3 h-3" style={{ color: 'var(--color-text-muted)' }} />
                           </Link>
                         </td>
                         <td className="py-3.5 px-4">{getStatusBadge(job.status)}</td>
-                        <td className="py-3.5 px-4">
-                          <span className="font-mono text-slate-300">
-                            {successStages} / 7 completed
-                          </span>
+                        <td className="py-3.5 px-4" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)' }}>
+                          {successStages} / 7 completed
                         </td>
-                        <td className="py-3.5 px-4 font-mono text-slate-400">
+                        <td className="py-3.5 px-4" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text-secondary)' }}>
                           {formatDuration(job.duration_ms)}
                         </td>
-                        <td className="py-3.5 px-4 text-slate-400">
+                        <td className="py-3.5 px-4" style={{ color: 'var(--color-text-secondary)' }}>
                           {new Date(job.created_at).toLocaleString()}
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <button
                             onClick={() => setExpandedJobId(isExpanded ? null : job.job_id)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors"
+                            style={{
+                              backgroundColor: 'var(--color-bg-elevated)',
+                              borderColor: 'var(--color-border)',
+                              color: 'var(--color-text-primary)',
+                            }}
                           >
                             <span>{isExpanded ? 'Hide Timeline' : 'View Timeline'}</span>
                             {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -274,17 +299,20 @@ export const PipelineRunsPage: React.FC = () => {
 
                       {/* Expandable Execution Timeline Drawer */}
                       {isExpanded && (
-                        <tr className="bg-slate-950/60">
+                        <tr style={{ backgroundColor: 'var(--color-bg-primary)' }}>
                           <td colSpan={7} className="p-6">
-                            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-inner">
+                            <div
+                              className="rounded-2xl p-6 shadow-inner animate-fade-in-scale glass-card"
+                            >
                               <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                                  <Activity className="w-4 h-4 text-blue-400" />
+                                <h4 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--color-text-primary)' }}>
+                                  <Activity className="w-4 h-4" style={{ color: 'var(--color-accent-primary)' }} />
                                   Execution Timeline for #{job.job_id}
                                 </h4>
                                 <Link
                                   to={`/datasets/${job.dataset_id}`}
-                                  className="text-xs text-blue-400 hover:underline flex items-center gap-1"
+                                  className="text-xs hover:underline flex items-center gap-1"
+                                  style={{ color: 'var(--color-accent-primary)' }}
                                 >
                                   Open Dataset View <ArrowRight className="w-3 h-3" />
                                 </Link>

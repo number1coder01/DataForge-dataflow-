@@ -4,20 +4,32 @@ import os
 import uuid
 from fastapi import APIRouter, HTTPException, status, Depends
 from botocore.exceptions import ClientError
-from models.dataset import UploadUrlRequest, UploadUrlResponse, DatasetCreate, DatasetResponse
+from models.dataset import (
+    UploadUrlRequest,
+    UploadUrlResponse,
+    DatasetCreate,
+    DatasetResponse,
+)
 from routers.auth import get_current_user
-from database import create_dataset, get_datasets_by_user, get_dataset, delete_dataset_record
+from database import (
+    create_dataset,
+    get_datasets_by_user,
+    get_dataset,
+    delete_dataset_record,
+)
 from utils import sanitize_error_message, MAX_FILE_SIZE_BYTES
 
 router = APIRouter(prefix="/api/datasets", tags=["datasets"])
 
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "dataflow-platform-kaart")
 AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
-s3_client = boto3.client('s3', region_name=AWS_REGION)
+s3_client = boto3.client("s3", region_name=AWS_REGION)
 
 
 @router.post("/upload-url", response_model=UploadUrlResponse)
-def generate_upload_url(request: UploadUrlRequest, user: dict = Depends(get_current_user)):
+def generate_upload_url(
+    request: UploadUrlRequest, user: dict = Depends(get_current_user)
+):
     """Generate a presigned S3 upload URL with content-length constraints."""
     dataset_id = str(uuid.uuid4())
     s3_key = f"bronze/datasets/{dataset_id}/raw.csv"
@@ -26,20 +38,19 @@ def generate_upload_url(request: UploadUrlRequest, user: dict = Depends(get_curr
 
     try:
         presigned_url = s3_client.generate_presigned_url(
-            'put_object',
+            "put_object",
             Params={
-                'Bucket': S3_BUCKET_NAME,
-                'Key': s3_key,
-                'ContentType': 'text/csv',
+                "Bucket": S3_BUCKET_NAME,
+                "Key": s3_key,
+                "ContentType": "text/csv",
             },
-            ExpiresIn=300
+            ExpiresIn=300,
         )
     except Exception as e:
         # Don't leak AWS internals
         print(f"[ERROR] Failed to generate presigned URL: {sanitize_error_message(e)}")
         raise HTTPException(
-            status_code=500,
-            detail="Failed to generate upload URL. Please try again."
+            status_code=500, detail="Failed to generate upload URL. Please try again."
         )
 
     return UploadUrlResponse(upload_url=presigned_url, dataset_id=dataset_id)
@@ -56,7 +67,7 @@ def create_new_dataset(request: DatasetCreate, user: dict = Depends(get_current_
     try:
         s3_key = f"bronze/datasets/{request.dataset_id}/raw.csv"
         response = s3_client.head_object(Bucket=S3_BUCKET_NAME, Key=s3_key)
-        file_size = response['ContentLength']
+        file_size = response["ContentLength"]
 
         # Server-side file size enforcement
         if file_size > MAX_FILE_SIZE_BYTES:
@@ -67,21 +78,25 @@ def create_new_dataset(request: DatasetCreate, user: dict = Depends(get_current_
                 pass
             raise HTTPException(
                 status_code=400,
-                detail=f"Uploaded file exceeds maximum size of {MAX_FILE_SIZE_BYTES // (1024 * 1024)}MB"
+                detail=f"Uploaded file exceeds maximum size of {MAX_FILE_SIZE_BYTES // (1024 * 1024)}MB",
             )
 
         # Verify Content-Type header from S3
-        content_type = response.get('ContentType', '')
-        if content_type and 'csv' not in content_type.lower() and 'text' not in content_type.lower():
+        content_type = response.get("ContentType", "")
+        if (
+            content_type
+            and "csv" not in content_type.lower()
+            and "text" not in content_type.lower()
+        ):
             raise HTTPException(
                 status_code=400,
-                detail="Invalid file type. Only CSV files are accepted."
+                detail="Invalid file type. Only CSV files are accepted.",
             )
 
     except ClientError:
         raise HTTPException(
             status_code=404,
-            detail="File not found in storage. Please upload the file first."
+            detail="File not found in storage. Please upload the file first.",
         )
 
     dataset = create_dataset(request.dataset_id, user_id, request.filename, file_size)
@@ -90,7 +105,7 @@ def create_new_dataset(request: DatasetCreate, user: dict = Depends(get_current_
 
     # Trigger ETL Lambda async
     try:
-        lambda_client = boto3.client('lambda', region_name=AWS_REGION)
+        lambda_client = boto3.client("lambda", region_name=AWS_REGION)
         payload = {
             "bucket": S3_BUCKET_NAME,
             "key": s3_key,
@@ -154,12 +169,11 @@ def delete_dataset(dataset_id: str, user: dict = Depends(get_current_user)):
         ]
         for prefix in prefixes:
             objects = s3_client.list_objects_v2(Bucket=S3_BUCKET_NAME, Prefix=prefix)
-            if 'Contents' in objects:
-                delete_keys = [{'Key': obj['Key']} for obj in objects['Contents']]
+            if "Contents" in objects:
+                delete_keys = [{"Key": obj["Key"]} for obj in objects["Contents"]]
                 if delete_keys:
                     s3_client.delete_objects(
-                        Bucket=S3_BUCKET_NAME,
-                        Delete={'Objects': delete_keys}
+                        Bucket=S3_BUCKET_NAME, Delete={"Objects": delete_keys}
                     )
     except Exception as e:
         # Log but don't fail the deletion
@@ -185,10 +199,12 @@ def _get_metadata_from_s3(dataset_id: str, file_type: str, user_id: str):
     key = f"silver/datasets/{dataset_id}/{file_type}.json"
     try:
         response = s3_client.get_object(Bucket=S3_BUCKET_NAME, Key=key)
-        return json.loads(response['Body'].read().decode('utf-8'))
+        return json.loads(response["Body"].read().decode("utf-8"))
     except ClientError as e:
-        if e.response['Error']['Code'] == 'NoSuchKey':
-            raise HTTPException(status_code=404, detail=f"{file_type} metadata not yet available")
+        if e.response["Error"]["Code"] == "NoSuchKey":
+            raise HTTPException(
+                status_code=404, detail=f"{file_type} metadata not yet available"
+            )
         # Sanitize AWS error before exposing
         raise HTTPException(status_code=500, detail="Failed to retrieve metadata")
 
